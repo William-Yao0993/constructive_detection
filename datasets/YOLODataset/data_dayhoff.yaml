@@ -1,0 +1,5 @@
+train: /mnt/data/dayhoff/home/u6771897/constructive_detection/datasets/YOLODataset/images/train/
+val: /mnt/data/dayhoff/home/u6771897/constructive_detection/datasets/YOLODataset/images/val/
+test: /mnt/data/dayhoff/home/u6771897/constructive_detection/datasets/YOLODataset/images/test/
+nc: 0
+names: []

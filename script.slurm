@@ -13,7 +13,7 @@
 #SBATCH --mail-type=end              # send email when job ends
 #SBATCH --mail-user=u6771897@anu.edu.au
 
-module load python/3.11
+module load mamba
 # Start Virtual Environment
 source activate myenv
 
@@ -22,4 +22,4 @@ pip install -r requirments.txt
 
 
 # Start Training Model 
-python train.py
+python train.py --multi-threading
