@@ -1,5 +1,0 @@
-train: C:\Users\u6771897\constructive_detection\datasets\YOLODataset/images/train/
-val: C:\Users\u6771897\constructive_detection\datasets\YOLODataset/images/val/
-test: C:\Users\u6771897\constructive_detection\datasets\YOLODataset/images/test/
-nc: 0
-names: []
