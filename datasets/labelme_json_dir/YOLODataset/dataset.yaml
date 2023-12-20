@@ -1,9 +1,0 @@
-train: C:\Users\u6771897\constructive_detection\datasets\labelme_json_dir\YOLODataset\images\train/
-val: C:\Users\u6771897\constructive_detection\datasets\labelme_json_dir\YOLODataset\images\val
-test: C:\Users\u6771897\constructive_detection\datasets\labelme_json_dir\YOLODataset\images\test
-nc: 12
-names: ['column_1', 'negative rebar', 
-         'hollow_1', 'lift', 
-        'stair', 'column_2', 'air_conditionor', 
-        'hollow_2', 'column_4', 'column_3', 
-        'column_vertical', 'column_horizontal']

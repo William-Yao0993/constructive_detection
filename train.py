@@ -10,7 +10,7 @@ ultralytics.checks()
 print ("Experiment Start:", datetime.now())
 
 #Load and Train a model
-LOCAL_PATH = r'C:\Users\u6771897\constructive_detection\datasets\labelme_json_dir\YOLODataset\dataset.yaml'
+LOCAL_PATH = 'datasets\YOLODataset\dataset.yaml'
 SERVER_PATH = '/mnt/data/dayhoff/home/u6771897/constructive_detection/datasets/YOLODataset/data_dayhoff.yaml'
 
 model = YOLO('yolov8n.yaml').load('yolov8n.pt')
