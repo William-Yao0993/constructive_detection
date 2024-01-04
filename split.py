@@ -6,8 +6,8 @@ dataset = 'datasets\data_without_rebar.txt'
 with open (dataset, 'r') as file:
     annotations = file.readlines()
 
+# Collect all cls
 annotations_dic = {}
-
 for annotation in annotations:
     class_id = annotation.split()[0]
     if (class_id not in annotations_dic):
@@ -21,6 +21,7 @@ test_file = open ('test.txt', 'w')
 
 for class_id, items in annotations_dic.items():
     if (len(items) < 3 ):
+        # Duplicate obj if cannot split 
         train_file.writelines(items)
         valid_file.writelines(items)
         test_file.writelines(items)
