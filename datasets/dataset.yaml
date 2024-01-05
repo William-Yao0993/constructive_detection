@@ -1,6 +1,7 @@
-train: C:\Users\u6771897\constructive_detection\datasets\train\images
-val: C:\Users\u6771897\constructive_detection\datasets\valid\images
-test: C:\Users\u6771897\constructive_detection\datasets\test\images
+path: C:\Users\Administrator\constructive_detection\datasets
+train: train\images
+val: valid\images
+test: test\images
 names: ['column_1', 'negative rebar', 
 'hollow_1', 'lift', 'stair', 'column_2', 
 'air_conditionor', 'hollow_2', 'column_4', 

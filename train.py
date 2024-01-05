@@ -1,10 +1,12 @@
 import comet_ml
 import datetime
+# comet_ml.config.save(api_key = 'Qn88wPyWB3PmP0hTUAwhg1h9u')
 experiment = comet_ml.Experiment(
         project_name= "Rabar_Segmentation"
 )
 experiment.set_name(f"trial{datetime.datetime.now().date().strftime('%Y%m%d')}")
-# comet_ml.config.save(api_key = 'Qn88wPyWB3PmP0hTUAwhg1h9u')
+
+
 import ultralytics
 from ultralytics import YOLO
 ultralytics.checks()

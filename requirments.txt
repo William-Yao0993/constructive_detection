@@ -1,8 +1,0 @@
-# Get Dependencies
-# pip install --upgrade pip 
-# pip install --upgrade numpy 
-# pip install --upgrade pandas 
-# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 # Pytorch 2.1.1 - Windows - CUDA 12.1
-# pip install ultralytics 
-# pip install roboflow --user 
-# pip install ultralytics comet_ml torch torchvision 
