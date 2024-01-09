@@ -1,0 +1,18 @@
+path: ../datasets/constructive_seg
+train: images/train
+val: images/val
+nc: 13
+names: 
+        0: column_1 
+        1: negative_rebar
+        2: rebar 
+        3: hollow_1 
+        4: lift 
+        5: stair 
+        6: column_2 
+        7: air_conditionor
+        8: hollow_2 
+        9: column_4 
+        10: column_3 
+        11: column_vertical 
+        12: column_horizontal

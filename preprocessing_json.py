@@ -9,9 +9,9 @@ with open ('datasets/data.json','r') as file:
 
 
 # Hold out rebar
-data_without_rebar = [i for i in data['shapes'] if i['label'] != 'rebar']
+# data_without_rebar = [i for i in data['shapes'] if i['label'] != 'rebar']
 
-data['shapes'] = data_without_rebar
+# data['shapes'] = data_without_rebar
 
 # Get the Class_id order
 ordered_label = OrderedDict()

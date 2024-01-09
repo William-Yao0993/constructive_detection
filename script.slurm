@@ -18,7 +18,7 @@ module load mamba
 source activate myenv
 
 # Get All Dependencies
-pip install -r requirments.txt
+# pip install -r requirments.txt
 
 
 # Start Training Model 
