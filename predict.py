@@ -7,5 +7,5 @@ result = model.predict(
     source=img_path,
     save = True,
     save_conf = True,
-    classes = 1
+    classes = 2
 )

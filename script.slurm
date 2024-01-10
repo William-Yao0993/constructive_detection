@@ -4,9 +4,9 @@
 #SBATCH --gres=gpu:1                 # request two GPU
 #SBATCH --nodes=1                    # node count
 #SBATCH --ntasks=1                   # total number of tasks across all nodes
-#SBATCH --cpus-per-task=64            # cpu-cores per task 
-#SBATCH --mem=128G                    # memory per cpu-core 
-#SBATCH --time=01-00:00:00              # total run time limit (HH:MM:SS)
+#SBATCH --cpus-per-task=128            # cpu-cores per task 
+#SBATCH --mem=640G                    # memory per cpu-core 
+#SBATCH --time=02-00:00:00              # total run time limit (HH:MM:SS)
 #SBATCH --output=%j.%x.out           # file to collect standard output
 #SBATCH --error=%j.%x.err            # file to collect standard error
 #SBATCH --mail-type=begin            # send email when job begins
