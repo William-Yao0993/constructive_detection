@@ -1,4 +1,4 @@
-path: ../datasets/constructive_seg
+path: /mnt/data/dayhoff/home/u6771897/constructive_detection/datasets/constructive_seg
 train: images/train
 val: images/val
 nc: 13
