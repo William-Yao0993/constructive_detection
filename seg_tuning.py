@@ -5,12 +5,15 @@ experiment = Experiment(
 )
 experiment.set_name(datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
 
+import os
+os.environ["OMP_NUM_THREADS"] = '16'
+
 from ultralytics import YOLO
 LOCAL_PATH = 'datasets\constructive_seg\dataset.yaml'
 SERVER_PATH = '/mnt/data/dayhoff/home/u6771897/constructive_detection/datasets/constructive_seg/data_dayhoff.yaml'
 model_path = 'models/seg_2024_01_10.pt'
-model = YOLO(model_path,task = 'segment')
-result = model.tune(
+model = YOLO(model_path)
+model.tune(
     data = SERVER_PATH,
     epochs = 100,
     iterations = 300,
@@ -19,5 +22,6 @@ result = model.tune(
     plots = True,
     save = True,
     val = False,
-    augment = True
+    augment = True,
+    single_cls = True
 )

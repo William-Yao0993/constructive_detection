@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=rebar_seg   # create a short name for your job
+#SBATCH --job-name=rebar_seg_tuning   # create a short name for your job
 #SBATCH --partition=GPU              # specify the GPU partition
 #SBATCH --gres=gpu:1                 # request two GPU
 #SBATCH --nodes=1                    # node count
 #SBATCH --ntasks=1                   # total number of tasks across all nodes
 #SBATCH --cpus-per-task=128            # cpu-cores per task 
 #SBATCH --mem=640G                    # memory per cpu-core 
-#SBATCH --time=02-00:00:00              # total run time limit (HH:MM:SS)
+#SBATCH --time=01-00:00:00              # total run time limit (HH:MM:SS)
 #SBATCH --output=%j.%x.out           # file to collect standard output
 #SBATCH --error=%j.%x.err            # file to collect standard error
 #SBATCH --mail-type=begin            # send email when job begins
@@ -18,8 +18,8 @@ module load mamba
 source activate myenv
 
 # Get All Dependencies
-# pip install -r requirments.txt
+# pip install --upgrade -r requirements.txt
 
 
 # Start Training Model 
-python train.py --multi-threading
+python seg_tuning.py --multi-threading
