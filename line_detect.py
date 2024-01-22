@@ -42,7 +42,6 @@ cv2.rectangle(  mask,
                (int(width*0.0), int(height*0.925)), 
                (int(width*1), int(height*1.0)) ,0,-1)
 masked_edges = cv2.bitwise_and(edges,edges, mask = mask)
-cedges = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
 lines = cv2.HoughLinesP(
     masked_edges,
     rho=1,
@@ -52,21 +51,15 @@ lines = cv2.HoughLinesP(
     maxLineGap=8
      )
 
-# lines = cv2.HoughLines(
-#     edges,
-#     rho = 1,
-#     theta= np.pi /180,
-#     threshold= 200
-# )
-
-
+# print(lines.__len__())   
 angles = []
 if lines is not None: 
     for line in lines:
         x1,y1,x2,y2 = line[0]
         angle = np.degrees(np.arctan2(y2-y1, x2-x1)) % 180
         angles.append(angle)
-        cv2.line(img, (x1,y1), (x2,y2), (0,255,0), 2)
+
+        # cv2.line(img, (x1,y1), (x2,y2), (255,0,0), 2)
 mostCommonAngle = np.bincount(np.round(angles).astype(int)).argmax() 
 print ('most common angle ' + str(mostCommonAngle))
 
@@ -82,13 +75,54 @@ if angleDiffOrthogonalCandidateList:
     #print(angleDiffOrthogonalCandidateList)  
     mostCommonDiff = np.bincount(np.round(angleDiffOrthogonalCandidateList).astype(int)).argmax()
 print ('most common diff angle ', str(mostCommonDiff))
-
+selectedLines = []
 for line, diff in zip(lines, angleDiffList): 
     x1,y1,x2,y2 = line[0]
     angle = np.degrees(np.arctan2(y2-y1, x2-x1)) % 180
     if (diff < 5) or (np.abs(diff - mostCommonDiff) < 5): 
-        cv2.line(img, (x1,y1), (x2,y2), (0,0,255), 2)
-#        break
+        #cv2.line(img, (x1,y1), (x2,y2), (0,255,0), 2)
+        selectedLines.append(line)
+### Find the Rebar Cross-over Desity 
+     
+
+# Kmeans to seperate Horizontal/Vertical lines  
+features = np.array([[np.cos(2*angle), np.sin(2*angle)] for angle in np.radians(angles)]).astype(np.float32)
+# Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
+criteria = (cv2.TERM_CRITERIA_EPS+cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+# Kmean++ for initial Centre
+flags = cv2.KMEANS_PP_CENTERS
+_,labels,centres = cv2.kmeans(features, 2, None, criteria, 10, flags)
+
+horizontalLines = lines[labels.ravel() == 0]
+verticalLines = lines[labels.ravel() == 1]
+for line in horizontalLines:
+    x1,y1,x2,y2 = line[0]
+    cv2.line(img, (x1,y1),(x2,y2), (0,255,0),2)
+for line in verticalLines:
+    x1,y1,x2,y2 = line[0]
+    cv2.line(img, (x1,y1),(x2,y2), (255,0,0),2)
+
+def intersection(l1,l2):
+    x1,y1,x2,y2 = l1[0]
+    a1,b1,a2,b2 = l2[0]
+
+    theta1 = np.arctan2((y2-y1),(x2-x1))
+    theta2 = np.arctan2((b2-b1),(a2-a1))
+    # rθ=x0⋅cosθ+y0⋅sinθ
+    rho1 = x1*np.cos(theta1) + y1*np.sin(theta1)
+    rho2 = a1*np.cos(theta1) + b1*np.sin(theta2)
+    A = np.array([
+        [np.cos(theta1), np.sin(theta1)],
+        [np.cos(theta2), np.sin(theta2)]
+    ])
+    b = np.array([rho1,rho2])
+    x,y = np.linalg.solve(A,b)
+    return (int(np.round(x)), int(np.round(y)))
+intersections = []
+for horizontalLine in horizontalLines:
+    for verticalLine in verticalLines:
+        intersections.append(intersection(horizontalLine,verticalLine))
+print(len(intersections))
 cv2.namedWindow('detection',cv2.WINDOW_NORMAL)
 cv2.resizeWindow('detection', 1920, 1000)   
 cv2.imshow("detection", img)
