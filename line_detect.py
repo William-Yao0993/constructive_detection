@@ -47,8 +47,8 @@ lines = cv2.HoughLinesP(
     rho=1,
     theta=90*(np.pi/180),
     threshold= 100,
-    minLineLength=50,
-    maxLineGap=8
+    minLineLength=55,
+    maxLineGap=10
      )
 
 # print(lines.__len__())   
@@ -93,36 +93,46 @@ criteria = (cv2.TERM_CRITERIA_EPS+cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
 flags = cv2.KMEANS_PP_CENTERS
 _,labels,centres = cv2.kmeans(features, 2, None, criteria, 10, flags)
 
-horizontalLines = lines[labels.ravel() == 0]
-verticalLines = lines[labels.ravel() == 1]
+horizontalLines = lines[labels.ravel() == 1]
+verticalLines = lines[labels.ravel() == 0]
 for line in horizontalLines:
     x1,y1,x2,y2 = line[0]
     cv2.line(img, (x1,y1),(x2,y2), (0,255,0),2)
 for line in verticalLines:
     x1,y1,x2,y2 = line[0]
     cv2.line(img, (x1,y1),(x2,y2), (255,0,0),2)
+print(len(horizontalLines))
+print(len(verticalLines))
 
-def intersection(l1,l2):
+intersections = set([])
+for i, l1 in enumerate(horizontalLines):
     x1,y1,x2,y2 = l1[0]
-    a1,b1,a2,b2 = l2[0]
+    #cv2.line(img, (x1,y1),(x2,y2), (0,255,0),2)
+    theta1 = np.arctan2(y2-y1 ,x2-x1) / 90
+    rho1 = x1*np.cos(theta1) + y1*np.sin(theta1) 
+    
+    for l2 in verticalLines:
+        x3,y3,x4,y4 = l2[0]
+        if (x1 <=x3 <= x2) and (y3 <= y1 and y4 >= y2):
+        #cv2.line(img, (x3,y3),(x4,y4), (255,0,0),2)
+            theta2 = np.arctan2(y4-y3, x4-x3) /90
+            rho2 = x3* np.cos(theta2) + y3*np.sin(theta2)
 
-    theta1 = np.arctan2((y2-y1),(x2-x1))
-    theta2 = np.arctan2((b2-b1),(a2-a1))
-    # rθ=x0⋅cosθ+y0⋅sinθ
-    rho1 = x1*np.cos(theta1) + y1*np.sin(theta1)
-    rho2 = a1*np.cos(theta1) + b1*np.sin(theta2)
-    A = np.array([
-        [np.cos(theta1), np.sin(theta1)],
-        [np.cos(theta2), np.sin(theta2)]
-    ])
-    b = np.array([rho1,rho2])
-    x,y = np.linalg.solve(A,b)
-    return (int(np.round(x)), int(np.round(y)))
-intersections = []
-for horizontalLine in horizontalLines:
-    for verticalLine in verticalLines:
-        intersections.append(intersection(horizontalLine,verticalLine))
+            A = np.array([
+                [np.cos(theta1), np.sin(theta1)],
+                [np.cos(theta2), np.sin(theta2)]
+            ]) 
+            b = np.array([rho1,rho2])
+            x,y = np.linalg.solve(A,b)
+            x,y = int(np.round(x)), int(np.round(y))
+
+                
+            intersections.add((x,y))
+    print(f"{i},{len(intersections)}")
+    
 print(len(intersections))
+for point in intersections:
+    cv2.circle(img, (point[0],point[1]), 5, (0,0,255), -1)
 cv2.namedWindow('detection',cv2.WINDOW_NORMAL)
 cv2.resizeWindow('detection', 1920, 1000)   
 cv2.imshow("detection", img)
