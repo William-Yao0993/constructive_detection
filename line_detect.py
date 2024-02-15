@@ -82,9 +82,9 @@ for line, diff in zip(lines, angleDiffList):
     if (diff < 5) or (np.abs(diff - mostCommonDiff) < 5): 
         #cv2.line(img, (x1,y1), (x2,y2), (0,255,0), 2)
         selectedLines.append(line)
-### Find the Rebar Cross-over Desity 
-     
 
+     
+###--------------------------------------------------------------------------------------------------------------------
 # Kmeans to seperate Horizontal/Vertical lines  
 features = np.array([[np.cos(2*angle), np.sin(2*angle)] for angle in np.radians(angles)]).astype(np.float32)
 # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
@@ -113,7 +113,7 @@ for i, l1 in enumerate(horizontalLines):
     
     for l2 in verticalLines:
         x3,y3,x4,y4 = l2[0]
-        if (x1 <=x3 <= x2) and (y3 <= y1 and y4 >= y2):
+        if (x1 <=x3 <= x2):
         #cv2.line(img, (x3,y3),(x4,y4), (255,0,0),2)
             theta2 = np.arctan2(y4-y3, x4-x3) /90
             rho2 = x3* np.cos(theta2) + y3*np.sin(theta2)
@@ -128,7 +128,7 @@ for i, l1 in enumerate(horizontalLines):
 
                 
             intersections.add((x,y))
-    print(f"{i},{len(intersections)}")
+    print(f"{i}: intersections {len(intersections)}")
     
 print(len(intersections))
 for point in intersections:
