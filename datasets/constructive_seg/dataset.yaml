@@ -16,3 +16,5 @@ names:
         10: column_3 
         11: column_vertical 
         12: column_horizontal
+training:
+        include_classes:[1,2]
