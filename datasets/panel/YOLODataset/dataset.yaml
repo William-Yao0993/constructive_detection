@@ -1,0 +1,4 @@
+train: datasets\panel\YOLODataset/images/train/
+val: datasets\panel\YOLODataset/images/val/
+nc: 1
+names: ["panel"]

@@ -8,5 +8,7 @@ comet_ml
 openpyxl
 scipy
 scikit-learn 
-opencv-python
 opencv-contrib-python-headless
+labelme2yolo
+matplotlib
+tqdm
