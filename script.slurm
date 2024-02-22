@@ -22,4 +22,4 @@ source activate myenv
 
 
 # Start Training Model 
-python seg_tuning.py --multi-threading
+python train.py --multi-threading
