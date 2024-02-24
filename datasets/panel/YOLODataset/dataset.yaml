@@ -1,4 +1,5 @@
-train: datasets\panel\YOLODataset/images/train/
-val: datasets\panel\YOLODataset/images/val/
+path: C:\Users\William\constructive_detection\datasets\panel\YOLODataset
+train: images\train
+val: images\val
 nc: 1
 names: ["panel"]
