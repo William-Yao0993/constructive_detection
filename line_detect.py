@@ -2,59 +2,89 @@ import cv2
 import numpy as np
 
 img_path = r'datasets\data.png'
-img = cv2.imread(img_path, cv2.IMREAD_COLOR)
+img = cv2.imread(img_path)
 
 
 # Image Augmentation
 
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-cv2.imshow('gray', gray)
+
+# cv2.namedWindow('gray',cv2.WINDOW_NORMAL)
+# cv2.resizeWindow('gray', 960, 960)   
+# cv2.imshow('gray', gray)
+kernel_size =3
+blur_gray = cv2.GaussianBlur(gray,(kernel_size,kernel_size),0)
+# kernel_size =5
+# blur_gray2 = cv2.GaussianBlur(gray,(kernel_size,kernel_size),0)
+# cv2.namedWindow('GaussianBlur',cv2.WINDOW_NORMAL)
+# cv2.resizeWindow('GaussianBlur', 960, 960)   
+# cv2.imshow('GaussianBlur', blur_gray)
+
+
+ 
+
+low_threshold = 50
+high_threshold = 550
+edges = cv2.Canny(blur_gray, low_threshold,high_threshold)
+# cv2.namedWindow('edge',cv2.WINDOW_NORMAL)
+# cv2.resizeWindow('edge', 960, 960)   
+# cv2.imshow('edge', edges)
 
 
 
+# low_threshold = 60
+# high_threshold = 550
+# edges2 = cv2.Canny(blur_gray2, low_threshold,high_threshold)
+# cv2.namedWindow('edge2',cv2.WINDOW_NORMAL)
+# cv2.resizeWindow('edge2', 960, 960)   
+# cv2.imshow('edge2', edges2)
 
 
-edges = cv2.Canny(img, 250,200)
-cv2.namedWindow('edge',cv2.WINDOW_NORMAL)
-cv2.resizeWindow('edge', 1920, 1000)   
-cv2.imshow('edge', edges)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
-# height, width =  img.shape[:2]
+height, width =  img.shape[:2]
 
-# mask = np.ones((height,width), dtype=np.int8)
-# # Mask Out Left Elevator 
-# cv2.rectangle(  mask,
-#                (int(width*0.2), int(height*0.4)), 
-#                (int(width*0.33), int(height*0.58)) ,0,-1)
-# # Mask Out Lifts 
-# cv2.rectangle(  mask,
-#                (int(width*0.42), int(height*0.43)), 
-#                (int(width*0.59), int(height*0.66)) ,0,-1)
-# # Mask Out Right Stair
-# cv2.rectangle(  mask,
-#                (int(width*0.72), int(height*0.49)), 
-#                (int(width*0.86), int(height*0.66)) ,0,-1)
-# # Mask Out Top Edges 
-# cv2.rectangle(  mask,
-#                (int(width*0.0), int(height*0.0)), 
-#                (int(width*1.0), int(height*0.05)) ,0,-1)
-# cv2.rectangle(  mask,
-#                (int(width*0.0), int(height*0.0)), 
-#                (int(width*0.34), int(height*0.15)) ,0,-1)
-# # Mask Out Left Edges
-# cv2.rectangle(  mask,
-#                (int(width*0.0), int(height*0.0)), 
-#                (int(width*0.07), int(height*1.0)) ,0,-1)
-# # Mask Out Right Edges
-# cv2.rectangle(  mask,
-#                (int(width*0.973), int(height*0.0)), 
-#                (int(width*1), int(height*1.0)) ,0,-1)
-# # Mask Out Bottom Edge
-# cv2.rectangle(  mask,
-#                (int(width*0.0), int(height*0.925)), 
-#                (int(width*1), int(height*1.0)) ,0,-1)
-# masked_edges = cv2.bitwise_and(edges,edges, mask = mask)
+mask = np.ones((height,width), dtype=np.int8)
+# Mask Out Left Elevator 
+cv2.rectangle(  mask,
+               (int(width*0.2), int(height*0.4)), 
+               (int(width*0.33), int(height*0.58)) ,0,-1)
+# Mask Out Lifts 
+cv2.rectangle(  mask,
+               (int(width*0.42), int(height*0.43)), 
+               (int(width*0.59), int(height*0.66)) ,0,-1)
+# Mask Out Right Stair
+cv2.rectangle(  mask,
+               (int(width*0.72), int(height*0.49)), 
+               (int(width*0.86), int(height*0.66)) ,0,-1)
+# Mask Out Top Edges 
+cv2.rectangle(  mask,
+               (int(width*0.0), int(height*0.0)), 
+               (int(width*1.0), int(height*0.05)) ,0,-1)
+cv2.rectangle(  mask,
+               (int(width*0.0), int(height*0.0)), 
+               (int(width*0.34), int(height*0.15)) ,0,-1)
+# Mask Out Left Edges
+cv2.rectangle(  mask,
+               (int(width*0.0), int(height*0.0)), 
+               (int(width*0.07), int(height*1.0)) ,0,-1)
+# Mask Out Right Edges
+cv2.rectangle(  mask,
+               (int(width*0.973), int(height*0.0)), 
+               (int(width*1), int(height*1.0)) ,0,-1)
+# Mask Out Bottom Edge
+cv2.rectangle(  mask,
+               (int(width*0.0), int(height*0.925)), 
+               (int(width*1), int(height*1.0)) ,0,-1)
+masked_edges = cv2.bitwise_and(edges,edges, mask = mask)
+
+cv2.namedWindow('masked_edges',cv2.WINDOW_NORMAL)
+cv2.resizeWindow('masked_edges', 960, 960)   
+cv2.imshow('masked_edges', masked_edges)
+
+
+# masked_edges2 = cv2.bitwise_and(edges2,edges2, mask = mask)
+# cv2.namedWindow('masked_edges2',cv2.WINDOW_NORMAL)
+# cv2.resizeWindow('masked_edges2', 960, 960)   
+# cv2.imshow('masked_edges2', masked_edges2)
 # lines = cv2.HoughLinesP(
 #     masked_edges,
 #     rho=1,
@@ -149,5 +179,5 @@ cv2.destroyAllWindows()
 # cv2.namedWindow('detection',cv2.WINDOW_NORMAL)
 # cv2.resizeWindow('detection', 1920, 1000)   
 # cv2.imshow("detection", img)
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
+cv2.waitKey(0)
+cv2.destroyAllWindows()
