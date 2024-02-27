@@ -3,12 +3,32 @@ import numpy as np
 
 img_path = r'datasets\data.png'
 img = cv2.imread(img_path)
-
+# cv2.namedWindow('img',cv2.WINDOW_NORMAL)
+# cv2.resizeWindow('img', 960, 960)   
+# cv2.imshow("img",img)
 
 # Image Augmentation
+hls = cv2.cvtColor(img,cv2.COLOR_BGR2HLS)
 
+lower = np.uint8([10, 200, 0])
+upper = np.uint8([255, 255, 255])
+white_mask = cv2.inRange(hls, lower, upper)
+
+# lower = np.uint8([10, 0,   100])
+# upper = np.uint8([40, 255, 255])
+# yellow_mask = cv2.inRange(hls, lower, upper)
+# hls_mask2 = cv2.bitwise_or(white_mask, yellow_mask)
+hls_mask = cv2.bitwise_and(img,img,mask=white_mask)
+
+
+# cv2.namedWindow('hlsMask',cv2.WINDOW_NORMAL)
+# cv2.resizeWindow('hlsMask', 960, 960)   
+# cv2.imshow("hlsMask",hls_mask)
+# cv2.namedWindow('hlsMask2',cv2.WINDOW_NORMAL)
+# cv2.resizeWindow('hlsMask2', 960, 960)   
+# cv2.imshow("hlsMask2",hls_mask2)
+gray_new = cv2.cvtColor(cv2.cvtColor(hls,cv2.COLOR_HLS2BGR), cv2.COLOR_BGR2GRAY)
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
 # cv2.namedWindow('gray',cv2.WINDOW_NORMAL)
 # cv2.resizeWindow('gray', 960, 960)   
 # cv2.imshow('gray', gray)
@@ -20,15 +40,10 @@ blur_gray = cv2.GaussianBlur(gray,(kernel_size,kernel_size),0)
 # cv2.resizeWindow('GaussianBlur', 960, 960)   
 # cv2.imshow('GaussianBlur', blur_gray)
 
-
+blur_gray2 = cv2.GaussianBlur(gray_new,(kernel_size,kernel_size),0)
  
 
-low_threshold = 50
-high_threshold = 550
-edges = cv2.Canny(blur_gray, low_threshold,high_threshold)
-# cv2.namedWindow('edge',cv2.WINDOW_NORMAL)
-# cv2.resizeWindow('edge', 960, 960)   
-# cv2.imshow('edge', edges)
+
 
 
 
@@ -74,17 +89,27 @@ cv2.rectangle(  mask,
 cv2.rectangle(  mask,
                (int(width*0.0), int(height*0.925)), 
                (int(width*1), int(height*1.0)) ,0,-1)
-masked_edges = cv2.bitwise_and(edges,edges, mask = mask)
-
-cv2.namedWindow('masked_edges',cv2.WINDOW_NORMAL)
-cv2.resizeWindow('masked_edges', 960, 960)   
-cv2.imshow('masked_edges', masked_edges)
+masked_edges = cv2.bitwise_or(blur_gray,blur_gray, mask = mask)
 
 
-# masked_edges2 = cv2.bitwise_and(edges2,edges2, mask = mask)
-# cv2.namedWindow('masked_edges2',cv2.WINDOW_NORMAL)
-# cv2.resizeWindow('masked_edges2', 960, 960)   
-# cv2.imshow('masked_edges2', masked_edges2)
+masked_edges2 = cv2.bitwise_or(gray_new,gray_new, mask = mask)
+# cv2.namedWindow('masked_edges',cv2.WINDOW_NORMAL)
+# cv2.resizeWindow('masked_edges', 960, 960)   
+# cv2.imshow('masked_edges', masked_edges)
+
+low_threshold = 50
+high_threshold = 550
+edges = cv2.Canny(masked_edges, low_threshold,high_threshold)
+cv2.namedWindow('edge',cv2.WINDOW_NORMAL)
+cv2.resizeWindow('edge', 960, 960)   
+cv2.imshow('edge', edges)
+
+
+edgesHLS = cv2.Canny(masked_edges2, low_threshold,high_threshold)
+cv2.namedWindow('edgeHLS',cv2.WINDOW_NORMAL)
+cv2.resizeWindow('edgeHLS', 960, 960)   
+cv2.imshow('edgeHLS', edgesHLS)
+
 # lines = cv2.HoughLinesP(
 #     masked_edges,
 #     rho=1,
