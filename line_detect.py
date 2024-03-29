@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-img_path = r'datasets\data.png'
+
 ##---------------------------------------------------------------------------------------------------------------------------
 # Augmentation 
 def quantizeImage(img,k):
@@ -196,7 +196,37 @@ def get_panel_info(img):
     results = model(img)
 
     return results[0].boxes.numpy()
-
+def xyxy_to_xywh(xyxy:np.ndarray) -> np.ndarray:
+    '''
+    top left point and bottom right point  (x0,y0,x1,y1) 
+    -> anchor point and width height  (anchor_x,anchor_y,w,h)  
+    '''
+    x0=xyxy[...,0]
+    y0=xyxy[...,1]
+    x1=xyxy[...,2]
+    y1=xyxy[...,3]
+    
+    
+    w= np.abs(x1-x0)
+    h= np.abs(y1-y0)
+    anchor_x = x0+w/2
+    anchor_y = y0+h/2
+    return np.stack((anchor_x,anchor_y,w,h),axis=-1)
+def xywh_to_xyxy(xyxy:np.ndarray) -> np.ndarray:
+    '''
+    anchor point and width height  (anchor_x,anchor_y,w,h)  
+    -> top left point and bottom right point  (x0,y0,x1,y1) 
+    '''
+    x=xyxy[...,0]
+    y=xyxy[...,1]
+    w=xyxy[...,2]
+    h=xyxy[...,3]
+    
+    x0=x-w/2
+    y0=y-h/2
+    x1=x0+w
+    y1=y0+h
+    return np.stack((x0,y0,x1,y1),axis=-1)
 def get_orig_xyxy(bboxes):
     xyxyn =bboxes.xyxyn
     orig_h, orig_w = bboxes.orig_shape
@@ -286,28 +316,37 @@ def get_iou(xyxy1,xyxy2):
 # YOLO Post-processing END
 ##-----------------------------------------------------------------------------------------------------------------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+##-----------------------------------------------------------------------------------------------------------------
+# Line segments & Intersections
+def get_houghlines_x0y0(lines:np.ndarray) -> np.ndarray: 
+    '''
+        get x0, y0 by given rho, theta 
+    '''
+    if lines.shape[-1] != 2:
+        return None
+    thetas =lines[...,1]
+    rhos = lines[...,0]
+    a = np.cos(thetas)
+    b = np.sin(thetas)
+    x0 = a*rhos
+    y0 = b*rhos 
+    return np.stack((x0,y0),axis=-1)
+def get_lines_segments_in_bboxes(lines, xyxys):
+    '''
+        get lines segments based on bboxes width and height
+    ''' 
+    pass    
+def get_lines_segments_in_bbox(lines,xyxy):
+        pass
 
 if __name__ == '__main__':
-    img = cv2.imread(img_path)
-    img = extract_panel_area(img)
+
     #---------------------------------------------------------------------------------------------------------------------------------------------
     # Parameters 
     #---------------------------------------------------------------------------------------------------------------------------------------------
+    # PATH    
+    img_path = r'datasets\data.png'
+
     # Gaussian
     kernel_size =(3,3)  
     
@@ -331,9 +370,16 @@ if __name__ == '__main__':
     minLineLength=55
     maxLineGap=10 
 
+    # Color in BGR for cv2 drawing
+    RED = (0,0,255)
+    BLUE  = (255,0,0)
+    GREEN = (0,255,0)
     #-----------------------------------------------------------------------------------------------------------------------------------------------
     # Experiments Start
     #-----------------------------------------------------------------------------------------------------------------------------------------------
+    img = cv2.imread(img_path)
+    img = extract_panel_area(img)
+    
     # Three trials
     # hls_reduced_range = cvt_hls_inrange(img,green,white) # 1: HLS
     # grayHLS = cv2.cvtColor(hls_reduced_range, cv2.COLOR_BGR2GRAY)
@@ -355,26 +401,35 @@ if __name__ == '__main__':
     edges = cv2.Canny(blur_gray, canny_low_threshold,canny_high_threshold)
     linesP= cv2.HoughLinesP(edges,rho=rho,theta=theta,threshold= threshold,minLineLength=minLineLength,maxLineGap=maxLineGap)
     lines = cv2.HoughLines(edges,rho,theta,threshold)
+    
     orthgonal_lines = degree_filter(lines,5)
     orthgonal_linesP = degree_filter(linesP,5)
-    
-    
+    lines_x0y0= get_houghlines_x0y0(orthgonal_lines)
+
     # use panel info as line segments length 
     bboxes = get_panel_info(img_path)
     overlap = 0.8 # threshold for bboxes in non-roi 
     bboxes = bboxes_in_roi(bboxes,get_roi_mask(img), overlap)
+
     orig_xyxys= bboxes_nms(bboxes,threshold=0.1)
     for x1,y1,x2,y2 in orig_xyxys.astype(np.int_):
         p1= x1,y1
         p2= x2,y2
-        cv2.rectangle(img,p1,p2,(0,0,255),3,0)
+        cv2.rectangle(img,p1,p2,RED,3,0)
+    
+    # for rho,theta in orthgonal_lines.squeeze(axis=1):
+    #     a= np.cos(theta)
+    #     b= np.sin(theta)
+    #     x0=int (a*rho)
+    #     y0=int(b*rho)
+    #     cv2.circle(img,(x0,y0),1,GREEN,10,-1)
     
     # TODO: 
     # use rho,theta to draw segment within panel 
     # use line segments from HoughLinesP to verify above and connect in-between gap
-    cv2.namedWindow('Result',cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('Result',980,980)
-    cv2.imshow('Result',img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # cv2.namedWindow('Result',cv2.WINDOW_NORMAL)
+    # cv2.resizeWindow('Result',980,980)
+    # cv2.imshow('Result',img)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
     
