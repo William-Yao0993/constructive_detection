@@ -331,14 +331,47 @@ def get_houghlines_x0y0(lines:np.ndarray) -> np.ndarray:
     x0 = a*rhos
     y0 = b*rhos 
     return np.stack((x0,y0),axis=-1)
-def get_lines_segments_in_bboxes(lines, xyxys):
+def get_lines_segments_in_bboxes(lines, bbox_xyxys):
     '''
-        get lines segments based on bboxes width and height
+        get lines segments based to fulfill in all bboxes
+        Return: np.ndarray in xyxy format
     ''' 
-    pass    
-def get_lines_segments_in_bbox(lines,xyxy):
-        pass
-
+    lines_segments = []
+    for bbox_xyxy in bbox_xyxys:
+        segments = get_lines_segments_in_bbox(lines,bbox_xyxy)
+        if segments is not None:
+            lines_segments.extend(segments)
+    return np.array(lines_segments)
+def get_lines_segments_in_bbox(lines,bbox_xyxy):
+    ''''
+        extend lines segment to fulfill in a bbox
+        Return: np.ndarray in xyxy format 
+    '''
+    theta= lines[...,1]
+    houghlines_x0y0 = get_houghlines_x0y0(lines)
+    bx0,by0,bx1,by1 = bbox_xyxy
+    # cv2.rectangle(img,(bx0,by0),(bx1,by1),RED,10,1)
+    # for x0,y0 in houghlines_x0y0.squeeze().astype(np.int_):
+    #     cv2.circle(img,(x0,y0),1,GREEN,10,-1)
+    # cv2.namedWindow('Result',cv2.WINDOW_NORMAL)
+    # cv2.resizeWindow('Result',980,980)
+    # cv2.imshow('Result',img)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    w,h = np.abs(bx1-bx0), np.abs(by1-by0)
+    fit_in_x = (houghlines_x0y0[...,0] >= bx0) & (houghlines_x0y0[...,0] <= bx1)   
+    fit_in_y = (houghlines_x0y0[...,1] >= by0) & (houghlines_x0y0[...,1] <= by1)
+    
+    masked_houghlines_x0y0 = houghlines_x0y0[fit_in_x | fit_in_y]
+    masked_theta= theta[fit_in_x | fit_in_y]
+    if len(masked_houghlines_x0y0)!=0:
+        x0= np.maximum(masked_houghlines_x0y0[...,0],bx0)
+        y0= np.maximum(masked_houghlines_x0y0[...,1],by0)
+        x1= x0+w*(np.sin(masked_theta))
+        y1= y0+h*(np.cos(masked_theta))
+        #print(x0.shape,y0.shape,x1.shape,y1.shape)
+        return np.stack((x0,y0,x1,y1),axis=-1)
+    return None
 if __name__ == '__main__':
 
     #---------------------------------------------------------------------------------------------------------------------------------------------
@@ -399,24 +432,31 @@ if __name__ == '__main__':
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blur_gray = cv2.GaussianBlur(gray,(kernel_size),0)
     edges = cv2.Canny(blur_gray, canny_low_threshold,canny_high_threshold)
-    linesP= cv2.HoughLinesP(edges,rho=rho,theta=theta,threshold= threshold,minLineLength=minLineLength,maxLineGap=maxLineGap)
-    lines = cv2.HoughLines(edges,rho,theta,threshold)
     
+    # Orthgonal Lines
+    linesP= cv2.HoughLinesP(edges,rho=rho,theta=theta,threshold= threshold,minLineLength=minLineLength,maxLineGap=maxLineGap)
+    lines = cv2.HoughLines(edges,rho,theta,threshold) 
     orthgonal_lines = degree_filter(lines,5)
     orthgonal_linesP = degree_filter(linesP,5)
-    lines_x0y0= get_houghlines_x0y0(orthgonal_lines)
 
-    # use panel info as line segments length 
+    # Bounding Box info 
     bboxes = get_panel_info(img_path)
     overlap = 0.8 # threshold for bboxes in non-roi 
     bboxes = bboxes_in_roi(bboxes,get_roi_mask(img), overlap)
+    bboxes_orig_xyxys= bboxes_nms(bboxes,threshold=0.1) 
 
-    orig_xyxys= bboxes_nms(bboxes,threshold=0.1)
-    for x1,y1,x2,y2 in orig_xyxys.astype(np.int_):
+
+    for x1,y1,x2,y2 in bboxes_orig_xyxys.astype(np.int_):
         p1= x1,y1
         p2= x2,y2
         cv2.rectangle(img,p1,p2,RED,3,0)
     
+    # Use rho,theta and bboxes to draw segment within panel 
+    lines_segments = get_lines_segments_in_bboxes(orthgonal_lines,bboxes_orig_xyxys)
+    for x0,y0,x1,y1 in lines_segments.squeeze().astype(np.int_):
+        p1 = (x0,y0)
+        p2 = (x1,y1)
+        cv2.line(img,p1,p2,GREEN,2,cv2.LINE_AA)
     # for rho,theta in orthgonal_lines.squeeze(axis=1):
     #     a= np.cos(theta)
     #     b= np.sin(theta)
@@ -425,11 +465,11 @@ if __name__ == '__main__':
     #     cv2.circle(img,(x0,y0),1,GREEN,10,-1)
     
     # TODO: 
-    # use rho,theta to draw segment within panel 
+
     # use line segments from HoughLinesP to verify above and connect in-between gap
-    # cv2.namedWindow('Result',cv2.WINDOW_NORMAL)
-    # cv2.resizeWindow('Result',980,980)
-    # cv2.imshow('Result',img)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+    cv2.namedWindow('Result',cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('Result',980,980)
+    cv2.imshow('Result',img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
     
