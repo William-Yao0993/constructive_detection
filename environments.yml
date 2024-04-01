@@ -1,0 +1,15 @@
+name: rebarEnv
+channels: 
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+- python=3.11
+- pandas
+- numpy
+- ultralytics
+- opencv
+- torchvision
+- torchaudio 
+- pytorch 
+- cpuonly 
