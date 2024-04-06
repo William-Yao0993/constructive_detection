@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-
+import matplotlib.pyplot as plt
 ##---------------------------------------------------------------------------------------------------------------------------
 # Augmentation 
 def quantizeImage(img,k):
@@ -26,6 +26,7 @@ def cvt_hls_inrange(img, lower, upper):
     white_mask = cv2.inRange(hls, lower, upper)
     hls_mask = cv2.bitwise_or(img,img,mask=white_mask)
     return hls_mask
+
 def get_roi_mask(img):
     '''
         Generate a Binary Mask 
@@ -196,15 +197,15 @@ def get_panel_info(img):
     results = model(img)
 
     return results[0].boxes.numpy()
-def xyxy_to_xywh(xyxy:np.ndarray) -> np.ndarray:
+def xyxy_to_xywh(xyxys:np.ndarray) -> np.ndarray:
     '''
     top left point and bottom right point  (x0,y0,x1,y1) 
     -> anchor point and width height  (anchor_x,anchor_y,w,h)  
     '''
-    x0=xyxy[...,0]
-    y0=xyxy[...,1]
-    x1=xyxy[...,2]
-    y1=xyxy[...,3]
+    x0=xyxys[...,0]
+    y0=xyxys[...,1]
+    x1=xyxys[...,2]
+    y1=xyxys[...,3]
     
     
     w= np.abs(x1-x0)
@@ -212,15 +213,15 @@ def xyxy_to_xywh(xyxy:np.ndarray) -> np.ndarray:
     anchor_x = x0+w/2
     anchor_y = y0+h/2
     return np.stack((anchor_x,anchor_y,w,h),axis=-1)
-def xywh_to_xyxy(xyxy:np.ndarray) -> np.ndarray:
+def xywh_to_xyxy(xyxys:np.ndarray) -> np.ndarray:
     '''
     anchor point and width height  (anchor_x,anchor_y,w,h)  
     -> top left point and bottom right point  (x0,y0,x1,y1) 
     '''
-    x=xyxy[...,0]
-    y=xyxy[...,1]
-    w=xyxy[...,2]
-    h=xyxy[...,3]
+    x=xyxys[...,0]
+    y=xyxys[...,1]
+    w=xyxys[...,2]
+    h=xyxys[...,3]
     
     x0=x-w/2
     y0=y-h/2
@@ -286,13 +287,17 @@ def bboxes_nms(bboxes,threshold):
         for box2 in orig_xyxys_sorted:
             if get_iou(box1,box2) > threshold:
                 orig_xyxys_sorted.remove(box2) 
-
     arr = np.array(candidates)
     return arr   
 
 def box_area(xyxy):
     x1,y1,x2,y2=xyxy
     return abs(x2-x1)*abs(y2-y1)
+
+def box_areas(xyxys):
+    xywhs = xyxy_to_xywh(xyxys)
+    return xywhs[...,2]*xywhs[...,3]
+
 def get_iou(xyxy1,xyxy2):
 
     area1 =box_area(xyxy1)
@@ -312,7 +317,22 @@ def get_iou(xyxy1,xyxy2):
     union = area1+area2 - intersection
     return intersection/union
 
-
+def bbox_kmeans(xyxys,nclusters):
+    '''
+        Clusters bounding boxes by its shape 
+        Return 
+    '''
+    areas = box_areas(xyxys)
+    critertia = (cv2.TermCriteria_EPS+cv2.TERM_CRITERIA_MAX_ITER,10,1.)
+    flags = cv2.KMEANS_RANDOM_CENTERS
+    _,lbs,ctrs = cv2.kmeans(areas,nclusters,critertia,20,flags)
+    # TODO
+    # should return groups of bboxes clustered by area (Not lbs)
+    grouped_xyxys=[]
+    for lb in np.unique(lbs):
+        group = xyxys[lbs.flatten() ==lb]
+        grouped_xyxys.append(group)
+    return np.array(grouped_xyxys)
 # YOLO Post-processing END
 ##-----------------------------------------------------------------------------------------------------------------
 
@@ -444,19 +464,19 @@ if __name__ == '__main__':
     overlap = 0.8 # threshold for bboxes in non-roi 
     bboxes = bboxes_in_roi(bboxes,get_roi_mask(img), overlap)
     bboxes_orig_xyxys= bboxes_nms(bboxes,threshold=0.1) 
-
+    
 
     for x1,y1,x2,y2 in bboxes_orig_xyxys.astype(np.int_):
         p1= x1,y1
         p2= x2,y2
         cv2.rectangle(img,p1,p2,RED,3,0)
     
-    # Use rho,theta and bboxes to draw segment within panel 
-    lines_segments = get_lines_segments_in_bboxes(orthgonal_lines,bboxes_orig_xyxys)
-    for x0,y0,x1,y1 in lines_segments.squeeze().astype(np.int_):
-        p1 = (x0,y0)
-        p2 = (x1,y1)
-        cv2.line(img,p1,p2,GREEN,2,cv2.LINE_AA)
+    # # Use rho,theta and bboxes to draw segment within panel 
+    # lines_segments = get_lines_segments_in_bboxes(orthgonal_lines,bboxes_orig_xyxys)
+    # for x0,y0,x1,y1 in lines_segments.squeeze().astype(np.int_):
+    #     p1 = (x0,y0)
+    #     p2 = (x1,y1)
+    #     cv2.line(img,p1,p2,GREEN,2,cv2.LINE_AA)
     # for rho,theta in orthgonal_lines.squeeze(axis=1):
     #     a= np.cos(theta)
     #     b= np.sin(theta)
