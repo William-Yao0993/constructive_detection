@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 ##---------------------------------------------------------------------------------------------------------------------------
 # Augmentation 
 def quantizeImage(img,k):
@@ -80,6 +79,26 @@ def extract_panel_area(img):
     return masked_img 
 # Augmentation END
 ##---------------------------------------------------------------------------------------------------------------------------
+
+
+
+##-----------------------------------------------------------------------------------------------------------------
+# Erosion & Dilation
+def erode_and_dilate(img):
+    skel = np.zeros_like(img)
+    erosion_kernel_H = cv2.getStructuringElement(cv2.MORPH_RECT,(1,5))
+    dilation_kernel = cv2.getStructuringElement(cv2.MORPH_CROSS,(5,5))
+    erosion_map_H = img.copy()
+    while(np.count_nonzero(erosion_map_H)!=0):
+        curr_erosion = cv2.erode(erosion_map_H,erosion_kernel_H) # Horizontal Erosion
+        opening = cv2.dilate(curr_erosion,dilation_kernel) # Both directional dilation
+        temp = cv2.subtract(img,opening) 
+        skel = cv2.bitwise_or(skel,temp)
+        erosion_map_H=curr_erosion
+    return skel
+# Erosion & Dilation END
+##-----------------------------------------------------------------------------------------------------------------
+
 
 
 
@@ -185,6 +204,7 @@ def lines_kmeans(lines,show= None):
 
 # Canny && HoughLines Post-processing END
 ##-----------------------------------------------------------------------------------------------------------------
+
 
 ##-----------------------------------------------------------------------------------------------------------------
 # YOLO Post-processing
@@ -317,22 +337,24 @@ def get_iou(xyxy1,xyxy2):
     union = area1+area2 - intersection
     return intersection/union
 
-def bbox_kmeans(xyxys,nclusters):
+def bbox_kmeans(xyxys:np.ndarray,nclusters:int)-> list:
     '''
         Clusters bounding boxes by its shape 
-        Return 
+        Return A List of seperated boxes-groups
     '''
-    areas = box_areas(xyxys)
+    # areas = box_areas(xyxys).astype(np.float32)
+    xywhs = xyxy_to_xywh(xyxys)
+    features = np.stack([xywhs[...,2],xywhs[...,3]],axis=-1)
     critertia = (cv2.TermCriteria_EPS+cv2.TERM_CRITERIA_MAX_ITER,10,1.)
     flags = cv2.KMEANS_RANDOM_CENTERS
-    _,lbs,ctrs = cv2.kmeans(areas,nclusters,critertia,20,flags)
+    _,lbs,_ = cv2.kmeans(features.astype(np.float32),nclusters,None,critertia,20,flags)
     # TODO
     # should return groups of bboxes clustered by area (Not lbs)
     grouped_xyxys=[]
     for lb in np.unique(lbs):
         group = xyxys[lbs.flatten() ==lb]
         grouped_xyxys.append(group)
-    return np.array(grouped_xyxys)
+    return grouped_xyxys
 # YOLO Post-processing END
 ##-----------------------------------------------------------------------------------------------------------------
 
@@ -370,14 +392,6 @@ def get_lines_segments_in_bbox(lines,bbox_xyxy):
     theta= lines[...,1]
     houghlines_x0y0 = get_houghlines_x0y0(lines)
     bx0,by0,bx1,by1 = bbox_xyxy
-    # cv2.rectangle(img,(bx0,by0),(bx1,by1),RED,10,1)
-    # for x0,y0 in houghlines_x0y0.squeeze().astype(np.int_):
-    #     cv2.circle(img,(x0,y0),1,GREEN,10,-1)
-    # cv2.namedWindow('Result',cv2.WINDOW_NORMAL)
-    # cv2.resizeWindow('Result',980,980)
-    # cv2.imshow('Result',img)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
     w,h = np.abs(bx1-bx0), np.abs(by1-by0)
     fit_in_x = (houghlines_x0y0[...,0] >= bx0) & (houghlines_x0y0[...,0] <= bx1)   
     fit_in_y = (houghlines_x0y0[...,1] >= by0) & (houghlines_x0y0[...,1] <= by1)
@@ -392,6 +406,10 @@ def get_lines_segments_in_bbox(lines,bbox_xyxy):
         #print(x0.shape,y0.shape,x1.shape,y1.shape)
         return np.stack((x0,y0,x1,y1),axis=-1)
     return None
+
+
+
+
 if __name__ == '__main__':
 
     #---------------------------------------------------------------------------------------------------------------------------------------------
@@ -413,8 +431,8 @@ if __name__ == '__main__':
     ## Canny 
     # Recommended a upper:lower ratio between 2:1 and 3:1.
     canny_low_threshold = 150
-    canny_high_threshold = int(3* canny_low_threshold)
-    apertureSize = 5
+    canny_high_threshold = int (3*canny_low_threshold)
+    #apertureSize = 5
     
     # HoughLines
     rho=10 
@@ -424,53 +442,93 @@ if __name__ == '__main__':
     maxLineGap=10 
 
     # Color in BGR for cv2 drawing
+    
     RED = (0,0,255)
     BLUE  = (255,0,0)
     GREEN = (0,255,0)
+    YELLOW = (0,255,255)
+    SKY_BLUE = (255,255,0)
+    PINK = (255,0,255)
+    COLORS = [RED,BLUE,GREEN,YELLOW,SKY_BLUE,PINK]
+    # Bounding Box 
+    bbox_nclusters = 5 # Numbers of bbox type in image
+    
+    # Line distances 
+    LINE_DISTANCE_IN_RED_H = 19.5
+    LINE_DISTANCE_IN_RED_V = 10.
+    LINE_DISTANCE_IN_BLUE_H = 15.8
+    LINE_DISTANCE_IN_BLUE_V = 18.9
+    LINE_DISTANCE_IN_GREEN_H = 14.8
+    LINE_DISTANCE_IN_GREEN_V = 10.17
+    LINE_DISTANCE_IN_YELLOW_H =14.
+    LINE_DISTANCE_IN_YELLOW_V =18.2
+    LINE_DISTANCE_IN_SKY_BLUE_H =21.
+    LINE_DISTANCE_IN_SKY_BLUE_V =12.67
     #-----------------------------------------------------------------------------------------------------------------------------------------------
     # Experiments Start
     #-----------------------------------------------------------------------------------------------------------------------------------------------
     img = cv2.imread(img_path)
     img = extract_panel_area(img)
-    
     # Three trials
-    # hls_reduced_range = cvt_hls_inrange(img,green,white) # 1: HLS
+    
+    ## 1 HLS
+    # hls_reduced_range = cvt_hls_inrange(img,green,white) 
     # grayHLS = cv2.cvtColor(hls_reduced_range, cv2.COLOR_BGR2GRAY)
     # blur_grayHLS = cv2.GaussianBlur(grayHLS,kernel_size,0)
     # edgesHLS = cv2.Canny(blur_grayHLS, canny_low_threshold,canny_high_threshold)
     # linesHLS = cv2.HoughLinesP(edgesHLS,rho=rho,theta=theta,threshold= threshold,minLineLength=minLineLength,maxLineGap=maxLineGap)
 
-    
-    
-    # quantiImg,c = quantizeImage(img,quanti_k) # 2 Quantize to k groups
+    ## 2 Quantize to k groups
+    # quantiImg,c = quantizeImage(img,quanti_k) 
     # grayQuanti = cv2.cvtColor(quantiImg,cv2.COLOR_BGR2GRAY)
     # blur_grayQuanti = cv2.GaussianBlur(grayQuanti,kernel_size,0)
     # edgesQuanti = cv2.Canny(blur_grayQuanti, canny_low_threshold,canny_high_threshold)
     # linesQuanti = cv2.HoughLinesP(edgesQuanti,rho=rho,theta=theta,threshold= threshold,minLineLength=minLineLength,maxLineGap=maxLineGap)
 
-    # 3 No augment 
+    ## 3 Original Gray Image
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    blur_gray = cv2.GaussianBlur(gray,(kernel_size),0)
-    edges = cv2.Canny(blur_gray, canny_low_threshold,canny_high_threshold)
+
     
-    # Orthgonal Lines
+    # blur_gray = cv2.GaussianBlur(gray,(kernel_size),0)
+    # TODO: 
+    # erosion & dilation before canny 
+    #gray = erode_and_dilate(gray)
+    edges = cv2.Canny(gray, canny_low_threshold,canny_high_threshold)
+    
+    # # Orthgonal Lines
     linesP= cv2.HoughLinesP(edges,rho=rho,theta=theta,threshold= threshold,minLineLength=minLineLength,maxLineGap=maxLineGap)
-    lines = cv2.HoughLines(edges,rho,theta,threshold) 
-    orthgonal_lines = degree_filter(lines,5)
+    # lines = cv2.HoughLines(edges,rho,theta,threshold) 
+    # orthgonal_lines = degree_filter(lines,5)
     orthgonal_linesP = degree_filter(linesP,5)
+    for x0,y0,x1,y1 in orthgonal_linesP.squeeze():
+        cv2.line(img,(x0,y0),(x1,y1),RED,2,0)
 
-    # Bounding Box info 
-    bboxes = get_panel_info(img_path)
-    overlap = 0.8 # threshold for bboxes in non-roi 
-    bboxes = bboxes_in_roi(bboxes,get_roi_mask(img), overlap)
-    bboxes_orig_xyxys= bboxes_nms(bboxes,threshold=0.1) 
+    cv2.namedWindow('Result',cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('Result',980,980)
+    cv2.imshow('Result',img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
     
+    # # Bounding Box info 
+    # bboxes = get_panel_info(img_path)
+    # overlap = 0.8 # threshold for bboxes in non-roi 
+    # bboxes = bboxes_in_roi(bboxes,get_roi_mask(img), overlap)
+    # bboxes_orig_xyxys= bboxes_nms(bboxes,threshold=0.1) 
+    # grouped_xyxys = bbox_kmeans(bboxes_orig_xyxys,bbox_nclusters)
 
-    for x1,y1,x2,y2 in bboxes_orig_xyxys.astype(np.int_):
-        p1= x1,y1
-        p2= x2,y2
-        cv2.rectangle(img,p1,p2,RED,3,0)
-    
+
+    # # bboxes drawing 
+    # for i,group in enumerate(grouped_xyxys):
+    #     color = COLORS[i]
+    #     for x1,y1,x2,y2 in group.astype(np.int_):
+    #         p1= x1,y1
+    #         p2= x2,y2
+    #         cv2.rectangle(img,p1,p2,color,3,0)
+
+
+
+
+
     # # Use rho,theta and bboxes to draw segment within panel 
     # lines_segments = get_lines_segments_in_bboxes(orthgonal_lines,bboxes_orig_xyxys)
     # for x0,y0,x1,y1 in lines_segments.squeeze().astype(np.int_):
@@ -484,12 +542,4 @@ if __name__ == '__main__':
     #     y0=int(b*rho)
     #     cv2.circle(img,(x0,y0),1,GREEN,10,-1)
     
-    # TODO: 
 
-    # use line segments from HoughLinesP to verify above and connect in-between gap
-    cv2.namedWindow('Result',cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('Result',980,980)
-    cv2.imshow('Result',img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    
