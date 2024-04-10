@@ -82,23 +82,6 @@ def extract_panel_area(img):
 
 
 
-##-----------------------------------------------------------------------------------------------------------------
-# Erosion & Dilation
-def erode_and_dilate(img):
-    skel = np.zeros_like(img)
-    erosion_kernel_H = cv2.getStructuringElement(cv2.MORPH_RECT,(1,5))
-    dilation_kernel = cv2.getStructuringElement(cv2.MORPH_CROSS,(5,5))
-    erosion_map_H = img.copy()
-    while(np.count_nonzero(erosion_map_H)!=0):
-        curr_erosion = cv2.erode(erosion_map_H,erosion_kernel_H) # Horizontal Erosion
-        opening = cv2.dilate(curr_erosion,dilation_kernel) # Both directional dilation
-        temp = cv2.subtract(img,opening) 
-        skel = cv2.bitwise_or(skel,temp)
-        erosion_map_H=curr_erosion
-    return skel
-# Erosion & Dilation END
-##-----------------------------------------------------------------------------------------------------------------
-
 
 
 
@@ -407,6 +390,23 @@ def get_lines_segments_in_bbox(lines,bbox_xyxy):
         return np.stack((x0,y0,x1,y1),axis=-1)
     return None
 
+##-----------------------------------------------------------------------------------------------------------------
+# Erosion & Dilation
+def erode_and_dilate(img):
+    skel = np.zeros_like(img)
+    erosion_kernel_H = cv2.getStructuringElement(cv2.MORPH_RECT,(1,3))
+    dilation_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(7,7))
+    erosion_map_H = img.copy()
+    while(np.count_nonzero(erosion_map_H)!=0):
+        curr_erosion = cv2.erode(erosion_map_H,erosion_kernel_H) # Horizontal Erosion
+        opening = cv2.dilate(curr_erosion,dilation_kernel,iterations=10) # Both directional dilation
+        temp = cv2.subtract(img,opening) 
+        skel = cv2.bitwise_or(skel,temp)
+        erosion_map_H=curr_erosion
+    return skel
+# Erosion & Dilation END
+##-----------------------------------------------------------------------------------------------------------------
+
 
 
 
@@ -469,8 +469,10 @@ if __name__ == '__main__':
     #-----------------------------------------------------------------------------------------------------------------------------------------------
     img = cv2.imread(img_path)
     img = extract_panel_area(img)
-    # Three trials
+
     
+    # Three trials
+
     ## 1 HLS
     # hls_reduced_range = cvt_hls_inrange(img,green,white) 
     # grayHLS = cv2.cvtColor(hls_reduced_range, cv2.COLOR_BGR2GRAY)
@@ -487,27 +489,59 @@ if __name__ == '__main__':
 
     ## 3 Original Gray Image
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
     
-    # blur_gray = cv2.GaussianBlur(gray,(kernel_size),0)
+    #gray = cv2.GaussianBlur(gray,(kernel_size),0)
     # TODO: 
     # erosion & dilation before canny 
-    #gray = erode_and_dilate(gray)
-    edges = cv2.Canny(gray, canny_low_threshold,canny_high_threshold)
     
-    # # Orthgonal Lines
-    linesP= cv2.HoughLinesP(edges,rho=rho,theta=theta,threshold= threshold,minLineLength=minLineLength,maxLineGap=maxLineGap)
-    # lines = cv2.HoughLines(edges,rho,theta,threshold) 
-    # orthgonal_lines = degree_filter(lines,5)
-    orthgonal_linesP = degree_filter(linesP,5)
-    for x0,y0,x1,y1 in orthgonal_linesP.squeeze():
-        cv2.line(img,(x0,y0),(x1,y1),RED,2,0)
+    
+    edges = cv2.Canny(gray, canny_low_threshold,canny_high_threshold)
+    # cv2.namedWindow('edges',cv2.WINDOW_NORMAL)
+    # cv2.resizeWindow('edges',980,980)
+    # cv2.imshow('edges',edges)
+    rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
+    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,1)) 
+    closing_map =edges.copy()
+    
+    closing = cv2.morphologyEx(edges,cv2.MORPH_CLOSE,rect_kernel,iterations=5)
+    closing_inv = cv2.bitwise_not(closing)
 
-    cv2.namedWindow('Result',cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('Result',980,980)
-    cv2.imshow('Result',img)
-    cv2.waitKey(0)
+    corner_kernels = np.array([
+        [[-1,-1,0],     
+         [-1, 1, 1],     
+         [0, 1, 0]],
+
+        [[0, 1, 0],
+         [1, 1, -1],
+         [0,-1, -1 ]]
+    ])
+    hit_miss_all = closing.copy()
+    for corner in corner_kernels:
+        hit_miss= cv2.morphologyEx(closing_inv,cv2.MORPH_HITMISS,corner,iterations=5)
+        hit_miss_all = cv2.bitwise_or(hit_miss,hit_miss_all)
+
+    # cross_kernel = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
+    # opening = cv2.morphologyEx(edges,cv2.MORPH_OPEN,cross_kernel)
+    cv2.namedWindow('RECT Morphology',cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('RECT Morphology',980,980)
+    cv2.imshow('RECT Morphology',closing_inv)
+    cv2.namedWindow('hitMiss',cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('hitMiss',980,980)
+    cv2.imshow('hitMiss',hit_miss_all)
+    cv2.waitKey()
     cv2.destroyAllWindows()
+
+
+
+    # # Orthgonal Lines
+    # linesP= cv2.HoughLinesP(edges,rho=rho,theta=theta,threshold= threshold,minLineLength=minLineLength,maxLineGap=maxLineGap)
+    # # lines = cv2.HoughLines(edges,rho,theta,threshold) 
+    # # orthgonal_lines = degree_filter(lines,5)
+    # orthgonal_linesP = degree_filter(linesP,5)
+    # for x0,y0,x1,y1 in orthgonal_linesP.squeeze():
+    #     cv2.line(img,(x0,y0),(x1,y1),RED,2,0)
+
+
     
     # # Bounding Box info 
     # bboxes = get_panel_info(img_path)
