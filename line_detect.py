@@ -198,7 +198,7 @@ def get_panel_info(img):
     from ultralytics import YOLO
     model = YOLO(r'models\panel.pt')
     results = model(img)
-
+    
     return results[0].boxes.numpy()
 def xyxy_to_xywh(xyxys:np.ndarray) -> np.ndarray:
     '''
@@ -408,6 +408,22 @@ def erode_and_dilate(img):
 ##-----------------------------------------------------------------------------------------------------------------
 
 
+def rect_fitting(bi:np.ndarray,threshold)-> np.ndarray:
+    '''
+        Rectanlge fitting a binary image
+        Return:
+        mask map of the estimated maximized rectangle(0), rest(1) above threshold, otherwise np.ones_like(bi) 
+    '''
+    mask = np.ones_like(bi,dtype=np.uint8)
+    ratio = np.sum(bi==0) / np.sum(mask)
+    if ratio >= threshold:
+        ys,xs = np.nonzero(bi==0)
+        p1 = xs.min(),ys.min()
+        p2 = xs.max(),ys.max()
+        cv2.rectangle(mask,p1,p2,0,-1)
+    return mask 
+
+
 
 
 if __name__ == '__main__':
@@ -464,13 +480,24 @@ if __name__ == '__main__':
     LINE_DISTANCE_IN_YELLOW_V =18.2
     LINE_DISTANCE_IN_SKY_BLUE_H =21.
     LINE_DISTANCE_IN_SKY_BLUE_V =12.67
+
+    # Morphology Kernels
+    rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(5,5))
+    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,1)) 
+    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(1,3)) 
     #-----------------------------------------------------------------------------------------------------------------------------------------------
     # Experiments Start
     #-----------------------------------------------------------------------------------------------------------------------------------------------
     img = cv2.imread(img_path)
     img = extract_panel_area(img)
 
-    
+    # Bounding Box info 
+    bboxes = get_panel_info(img_path)
+    overlap = 0.8 # threshold for bboxes in non-roi 
+    bboxes = bboxes_in_roi(bboxes,get_roi_mask(img), overlap)
+    bboxes_orig_xyxys= bboxes_nms(bboxes,threshold=0.1) 
+    grouped_xyxys = bbox_kmeans(bboxes_orig_xyxys,bbox_nclusters)
+
     # Three trials
 
     ## 1 HLS
@@ -489,75 +516,55 @@ if __name__ == '__main__':
 
     ## 3 Original Gray Image
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    
     #gray = cv2.GaussianBlur(gray,(kernel_size),0)
-    # TODO: 
-    # erosion & dilation before canny 
-    
-    
+
+
     edges = cv2.Canny(gray, canny_low_threshold,canny_high_threshold)
     # cv2.namedWindow('edges',cv2.WINDOW_NORMAL)
     # cv2.resizeWindow('edges',980,980)
     # cv2.imshow('edges',edges)
-    rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
-    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,1)) 
-    closing_map =edges.copy()
-    
+
     closing = cv2.morphologyEx(edges,cv2.MORPH_CLOSE,rect_kernel,iterations=5)
-    closing_inv = cv2.bitwise_not(closing)
+    rect_threshold = 0.10
+    mask = np.ones_like(gray,dtype=np.uint8)
+    for xyxys in grouped_xyxys:
+        for x0,y0,x1,y1 in xyxys.astype(np.int_):
+            w, h = np.abs(x1-x0),np.abs(y1-y0)
+            region = closing[y0:y1,x0:x1]
+            rect_mask = rect_fitting(region,rect_threshold) 
+            mask[y0:y1,x0:x1] = rect_mask
+    roi_mask = get_roi_mask(img)
+    mask= cv2.bitwise_and(roi_mask.astype(np.uint8),mask.astype(np.uint8))
+    cv2.imwrite('morph_map.jpg', mask*255)
+    edges = cv2.bitwise_or(edges,edges,mask=mask)
+    # cv2.namedWindow('edges_with_Morph',cv2.WINDOW_NORMAL)
+    # cv2.resizeWindow('edges_with_Morph',980,980)
+    # cv2.imshow('edges_with_Morph',edges)
+    cv2.imwrite('edges_after_Morph.jpg', edges)
+    # bboxes drawing 
+    for i,group in enumerate(grouped_xyxys):
+        color = COLORS[i]
+        for x1,y1,x2,y2 in group.astype(np.int_):
+            p1= x1,y1
+            p2= x2,y2
+            cv2.rectangle(img,p1,p2,color,5,0)
 
-    corner_kernels = np.array([
-        [[-1,-1,0],     
-         [-1, 1, 1],     
-         [0, 1, 0]],
+    # Orthgonal Lines
+    linesP= cv2.HoughLinesP(edges,rho=rho,theta=theta,threshold= threshold,minLineLength=minLineLength,maxLineGap=maxLineGap)
+    # lines = cv2.HoughLines(edges,rho,theta,threshold) 
+    # orthgonal_lines = degree_filter(lines,5)
+    orthgonal_linesP = degree_filter(linesP,5)
+    for x0,y0,x1,y1 in orthgonal_linesP.squeeze():
+        cv2.line(img,(x0,y0),(x1,y1),(50,127,0),1,0)
+    # cv2.namedWindow('houghlines',cv2.WINDOW_NORMAL)
+    # cv2.resizeWindow('houghlines',980,980)
+    # cv2.imshow('houghlines',img)
 
-        [[0, 1, 0],
-         [1, 1, -1],
-         [0,-1, -1 ]]
-    ])
-    hit_miss_all = closing.copy()
-    for corner in corner_kernels:
-        hit_miss= cv2.morphologyEx(closing_inv,cv2.MORPH_HITMISS,corner,iterations=5)
-        hit_miss_all = cv2.bitwise_or(hit_miss,hit_miss_all)
-
-    # cross_kernel = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
-    # opening = cv2.morphologyEx(edges,cv2.MORPH_OPEN,cross_kernel)
-    cv2.namedWindow('RECT Morphology',cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('RECT Morphology',980,980)
-    cv2.imshow('RECT Morphology',closing_inv)
-    cv2.namedWindow('hitMiss',cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('hitMiss',980,980)
-    cv2.imshow('hitMiss',hit_miss_all)
-    cv2.waitKey()
-    cv2.destroyAllWindows()
-
-
-
-    # # Orthgonal Lines
-    # linesP= cv2.HoughLinesP(edges,rho=rho,theta=theta,threshold= threshold,minLineLength=minLineLength,maxLineGap=maxLineGap)
-    # # lines = cv2.HoughLines(edges,rho,theta,threshold) 
-    # # orthgonal_lines = degree_filter(lines,5)
-    # orthgonal_linesP = degree_filter(linesP,5)
-    # for x0,y0,x1,y1 in orthgonal_linesP.squeeze():
-    #     cv2.line(img,(x0,y0),(x1,y1),RED,2,0)
-
-
-    
-    # # Bounding Box info 
-    # bboxes = get_panel_info(img_path)
-    # overlap = 0.8 # threshold for bboxes in non-roi 
-    # bboxes = bboxes_in_roi(bboxes,get_roi_mask(img), overlap)
-    # bboxes_orig_xyxys= bboxes_nms(bboxes,threshold=0.1) 
-    # grouped_xyxys = bbox_kmeans(bboxes_orig_xyxys,bbox_nclusters)
+    # cv2.waitKey()
+    # cv2.destroyAllWindows()
 
 
-    # # bboxes drawing 
-    # for i,group in enumerate(grouped_xyxys):
-    #     color = COLORS[i]
-    #     for x1,y1,x2,y2 in group.astype(np.int_):
-    #         p1= x1,y1
-    #         p2= x2,y2
-    #         cv2.rectangle(img,p1,p2,color,3,0)
+
 
 
 
