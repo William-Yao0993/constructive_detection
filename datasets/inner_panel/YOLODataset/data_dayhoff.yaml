@@ -1,0 +1,5 @@
+path: /mnt/data/dayhoff/home/u6771897/constructive_detection
+train: datasets/inner_panel/YOLODataset/images/train/
+val: datasets/inner_panel/YOLODataset/images/val/
+nc: 1
+names: ["inner_panel"]

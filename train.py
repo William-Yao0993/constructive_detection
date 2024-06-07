@@ -14,22 +14,21 @@ from ultralytics import YOLO
 
 def main():
         #Train a model
-        LOCAL_PATH = 'datasets\panel\YOLODataset\dataset.yaml'
+        LOCAL_PATH = 'datasets\inner_panel\YOLODataset\dataset.yaml'
         SERVER_PATH = r'datasets/panel/YOLODataset/data_dayhoff.yaml'
 
-        model = YOLO(model='yolov8n-seg.pt')
+        model = YOLO(model='yolov8n.pt')
         result = model.train(data=LOCAL_PATH,
                         epochs = 300,
-                        patience = 30,
+                        patience = 50,
                         lr0 = 1E-3,
                         lrf = 1E-6,
                         optimizer = 'AdamW',
                         save = True,
                         plots = True,
                         val = True,
-                        cache = True,
-                        augment = False,
-                        project = f'run/seg_train_{datetime.date.today().isoformat()}',
+                        augment = True,
+                        project = f'run/det_train_{datetime.date.today().isoformat()}',
                         device = 0
                         )
         
