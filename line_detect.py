@@ -191,14 +191,13 @@ def lines_kmeans(lines,show= None):
 
 ##-----------------------------------------------------------------------------------------------------------------
 # YOLO Post-processing
-def get_panel_info(img):
+def get_bboxes_info(img,model_path):
     '''
     Return bboxes from YOLO prediction
     '''
     from ultralytics import YOLO
-    model = YOLO(r'models\panel.pt')
+    model = YOLO(model_path)
     results = model(img)
-    
     return results[0].boxes.numpy()
 def xyxy_to_xywh(xyxys:np.ndarray) -> np.ndarray:
     '''
@@ -433,7 +432,8 @@ if __name__ == '__main__':
     #---------------------------------------------------------------------------------------------------------------------------------------------
     # PATH    
     img_path = r'datasets\data.png'
-
+    panel_model_path = r'models\panel.pt'
+    inner_panel_model_path = r'models\inner_panel.pt'
     # Gaussian
     kernel_size =(3,3)  
     
@@ -490,14 +490,22 @@ if __name__ == '__main__':
     #-----------------------------------------------------------------------------------------------------------------------------------------------
     img = cv2.imread(img_path)
     img = extract_panel_area(img)
-
-    # Bounding Box info 
-    bboxes = get_panel_info(img_path)
+    # Panel Bounding Box info 
+    panel_bboxes = get_bboxes_info(img_path,panel_model_path)
+    # print(panel_bboxes)
+    # np.save('panel.npy',panel_bboxes)
     overlap = 0.8 # threshold for bboxes in non-roi 
-    bboxes = bboxes_in_roi(bboxes,get_roi_mask(img), overlap)
-    bboxes_orig_xyxys= bboxes_nms(bboxes,threshold=0.1) 
-    grouped_xyxys = bbox_kmeans(bboxes_orig_xyxys,bbox_nclusters)
+    panel_bboxes = bboxes_in_roi(panel_bboxes,get_roi_mask(img), overlap)
+    panel_orig_xyxys= bboxes_nms(panel_bboxes,threshold=0.1) 
+    grouped_xyxys = bbox_kmeans(panel_orig_xyxys,bbox_nclusters)
+    
+    # Inner panel info 
+    inner_panel_bboxes = get_bboxes_info(img_path,inner_panel_model_path)
+    inner_panel_bboxes = bboxes_in_roi(inner_panel_bboxes,get_roi_mask(img),overlap)
+    inner_panel_orig_xyxys= bboxes_nms(inner_panel_bboxes,threshold=0.1) 
 
+    for x0,y0,x1,y1 in inner_panel_orig_xyxys.astype(np.int_):
+        cv2.rectangle(img,(x0,y0),(x1,y1),PINK,3,cv2.LINE_AA)
     # Three trials
 
     ## 1 HLS
@@ -535,12 +543,12 @@ if __name__ == '__main__':
             mask[y0:y1,x0:x1] = rect_mask
     roi_mask = get_roi_mask(img)
     mask= cv2.bitwise_and(roi_mask.astype(np.uint8),mask.astype(np.uint8))
-    cv2.imwrite('morph_map.jpg', mask*255)
+    #cv2.imwrite('morph_map.jpg', mask*255)
     edges = cv2.bitwise_or(edges,edges,mask=mask)
     # cv2.namedWindow('edges_with_Morph',cv2.WINDOW_NORMAL)
     # cv2.resizeWindow('edges_with_Morph',980,980)
     # cv2.imshow('edges_with_Morph',edges)
-    cv2.imwrite('edges_after_Morph.jpg', edges)
+    #cv2.imwrite('edges_after_Morph.jpg', edges)
     # bboxes drawing 
     for i,group in enumerate(grouped_xyxys):
         color = COLORS[i]
@@ -553,15 +561,15 @@ if __name__ == '__main__':
     linesP= cv2.HoughLinesP(edges,rho=rho,theta=theta,threshold= threshold,minLineLength=minLineLength,maxLineGap=maxLineGap)
     # lines = cv2.HoughLines(edges,rho,theta,threshold) 
     # orthgonal_lines = degree_filter(lines,5)
-    orthgonal_linesP = degree_filter(linesP,5)
-    for x0,y0,x1,y1 in orthgonal_linesP.squeeze():
-        cv2.line(img,(x0,y0),(x1,y1),(50,127,0),1,0)
-    # cv2.namedWindow('houghlines',cv2.WINDOW_NORMAL)
-    # cv2.resizeWindow('houghlines',980,980)
-    # cv2.imshow('houghlines',img)
+    orthgonal_linesP = degree_filter(linesP,2)
+    # for x0,y0,x1,y1 in orthgonal_linesP.squeeze():
+    #     cv2.line(img,(x0,y0),(x1,y1),(50,127,0),1,0)
+    cv2.namedWindow('houghlines',cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('houghlines',980,980)
+    cv2.imshow('houghlines',img)
 
-    # cv2.waitKey()
-    # cv2.destroyAllWindows()
+    cv2.waitKey()
+    cv2.destroyAllWindows()
 
 
 
