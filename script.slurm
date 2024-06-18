@@ -4,8 +4,8 @@
 #SBATCH --gres=gpu:1                 # request two GPU
 #SBATCH --nodes=1                    # node count
 #SBATCH --ntasks=1                   # total number of tasks across all nodes
-#SBATCH --cpus-per-task=128            # cpu-cores per task 
-#SBATCH --mem=120G                    # memory per cpu-core 
+#SBATCH --cpus-per-task=16            # cpu-cores per task 
+#SBATCH --mem=20G                    # memory per cpu-core 
 #SBATCH --time=02-00:00:00              # total run time limit (HH:MM:SS)
 #SBATCH --output=%j.%x.out           # file to collect standard output
 #SBATCH --error=%j.%x.err            # file to collect standard error
@@ -18,7 +18,7 @@ module load mamba
 source activate myenv
 
 # Get All Dependencies
-pip install --upgrade -r requirements.txt
+#pip install --upgrade -r requirements.txt
 
 
 # Start Training Model 

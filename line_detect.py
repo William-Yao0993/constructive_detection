@@ -77,6 +77,8 @@ def extract_panel_area(img):
     mask=get_roi_mask(img)
     masked_img = cv2.bitwise_or(img,img, mask = mask)
     return masked_img 
+
+
 # Augmentation END
 ##---------------------------------------------------------------------------------------------------------------------------
 
@@ -481,6 +483,8 @@ if __name__ == '__main__':
     LINE_DISTANCE_IN_SKY_BLUE_H =21.
     LINE_DISTANCE_IN_SKY_BLUE_V =12.67
 
+    dists_h = [LINE_DISTANCE_IN_RED_H, LINE_DISTANCE_IN_BLUE_H,LINE_DISTANCE_IN_GREEN_H,LINE_DISTANCE_IN_YELLOW_H,LINE_DISTANCE_IN_SKY_BLUE_H]
+    dists_v = [LINE_DISTANCE_IN_RED_V, LINE_DISTANCE_IN_BLUE_V,LINE_DISTANCE_IN_GREEN_V,LINE_DISTANCE_IN_YELLOW_V,LINE_DISTANCE_IN_SKY_BLUE_V]
     # Morphology Kernels
     rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(5,5))
     horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,1)) 
@@ -503,9 +507,23 @@ if __name__ == '__main__':
     inner_panel_bboxes = get_bboxes_info(img_path,inner_panel_model_path)
     inner_panel_bboxes = bboxes_in_roi(inner_panel_bboxes,get_roi_mask(img),overlap)
     inner_panel_orig_xyxys= bboxes_nms(inner_panel_bboxes,threshold=0.1) 
-
+    
+    
+    # mask off inner panel area 
     for x0,y0,x1,y1 in inner_panel_orig_xyxys.astype(np.int_):
-        cv2.rectangle(img,(x0,y0),(x1,y1),PINK,3,cv2.LINE_AA)
+        cv2.rectangle(img,(x0,y0),(x1,y1),0,-1)
+    # Kmeans panel groups 
+    for i,group in enumerate(grouped_xyxys):
+        color = COLORS[i]
+        dist_h,dist_v = dists_h[i], dists_v[i]
+        for x1,y1,x2,y2 in group.astype(np.int_):
+            p1= x1,y1
+            p2= x2,y2
+            crop = img[y1:y2,x1:x2,:]
+            cv2.imshow('crop', crop)
+            break
+            cv2.rectangle(img,p1,p2,color,5,0)
+
     # Three trials
 
     ## 1 HLS
@@ -523,51 +541,45 @@ if __name__ == '__main__':
     # linesQuanti = cv2.HoughLinesP(edgesQuanti,rho=rho,theta=theta,threshold= threshold,minLineLength=minLineLength,maxLineGap=maxLineGap)
 
     ## 3 Original Gray Image
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     #gray = cv2.GaussianBlur(gray,(kernel_size),0)
 
 
-    edges = cv2.Canny(gray, canny_low_threshold,canny_high_threshold)
+    #edges = cv2.Canny(gray, canny_low_threshold,canny_high_threshold)
     # cv2.namedWindow('edges',cv2.WINDOW_NORMAL)
     # cv2.resizeWindow('edges',980,980)
     # cv2.imshow('edges',edges)
 
-    closing = cv2.morphologyEx(edges,cv2.MORPH_CLOSE,rect_kernel,iterations=5)
-    rect_threshold = 0.10
-    mask = np.ones_like(gray,dtype=np.uint8)
-    for xyxys in grouped_xyxys:
-        for x0,y0,x1,y1 in xyxys.astype(np.int_):
-            w, h = np.abs(x1-x0),np.abs(y1-y0)
-            region = closing[y0:y1,x0:x1]
-            rect_mask = rect_fitting(region,rect_threshold) 
-            mask[y0:y1,x0:x1] = rect_mask
-    roi_mask = get_roi_mask(img)
-    mask= cv2.bitwise_and(roi_mask.astype(np.uint8),mask.astype(np.uint8))
-    #cv2.imwrite('morph_map.jpg', mask*255)
-    edges = cv2.bitwise_or(edges,edges,mask=mask)
+    # closing = cv2.morphologyEx(edges,cv2.MORPH_CLOSE,rect_kernel,iterations=5)
+    # rect_threshold = 0.10
+    # mask = np.ones_like(gray,dtype=np.uint8)
+    # for xyxys in grouped_xyxys:
+    #     for x0,y0,x1,y1 in xyxys.astype(np.int_):
+    #         w, h = np.abs(x1-x0),np.abs(y1-y0)
+    #         region = closing[y0:y1,x0:x1]
+    #         rect_mask = rect_fitting(region,rect_threshold) 
+    #         mask[y0:y1,x0:x1] = rect_mask
+    # roi_mask = get_roi_mask(img)
+    # mask= cv2.bitwise_and(roi_mask.astype(np.uint8),mask.astype(np.uint8))
+    # #cv2.imwrite('morph_map.jpg', mask*255)
+    # edges = cv2.bitwise_or(edges,edges,mask=mask)
+
     # cv2.namedWindow('edges_with_Morph',cv2.WINDOW_NORMAL)
     # cv2.resizeWindow('edges_with_Morph',980,980)
     # cv2.imshow('edges_with_Morph',edges)
     #cv2.imwrite('edges_after_Morph.jpg', edges)
     # bboxes drawing 
-    for i,group in enumerate(grouped_xyxys):
-        color = COLORS[i]
-        for x1,y1,x2,y2 in group.astype(np.int_):
-            p1= x1,y1
-            p2= x2,y2
-            cv2.rectangle(img,p1,p2,color,5,0)
 
     # Orthgonal Lines
-    linesP= cv2.HoughLinesP(edges,rho=rho,theta=theta,threshold= threshold,minLineLength=minLineLength,maxLineGap=maxLineGap)
+    #linesP= cv2.HoughLinesP(edges,rho=rho,theta=theta,threshold= threshold,minLineLength=minLineLength,maxLineGap=maxLineGap)
     # lines = cv2.HoughLines(edges,rho,theta,threshold) 
     # orthgonal_lines = degree_filter(lines,5)
-    orthgonal_linesP = degree_filter(linesP,2)
+    # orthgonal_linesP = degree_filter(linesP,2)
     # for x0,y0,x1,y1 in orthgonal_linesP.squeeze():
     #     cv2.line(img,(x0,y0),(x1,y1),(50,127,0),1,0)
-    cv2.namedWindow('houghlines',cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('houghlines',980,980)
-    cv2.imshow('houghlines',img)
-
+    cv2.namedWindow('img',cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('img',980,980)
+    cv2.imshow('img',img)
     cv2.waitKey()
     cv2.destroyAllWindows()
 

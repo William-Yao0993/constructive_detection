@@ -18,7 +18,7 @@ def main():
         SERVER_PATH = r'datasets/panel/YOLODataset/data_dayhoff.yaml'
 
         model = YOLO(model='yolov8n.pt')
-        result = model.train(data=LOCAL_PATH,
+        result = model.train(data=SERVER_PATH,
                         epochs = 300,
                         patience = 50,
                         lr0 = 1E-3,
